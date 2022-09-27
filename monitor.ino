@@ -1,34 +1,46 @@
- void monitor_setup() {
+void monitor_setup() {
   
 }
 
+#define READING_COUNT 20
+
+int tempReadings[READING_COUNT];
+  
 void monitor_loop() {
   byte chipIndex = 0;
   byte pinIndex = 0;
   byte sensorIndex;
+  byte readingIndex;
   int adcValue;
-  int adcCalibration;
   int microseconds;
+  float value;
   //sSerial.println("monitor_loop");
 
   // Get current readings
   //Serial.print(micros());
   //Serial.print("\t");
   //if (DEBUG) Serial.println("Readings:");
+
+  
+
   for (chipIndex = 0; chipIndex < chipCount; chipIndex++) {
     chipSelect(chipIndex);
     for (pinIndex = 0; pinIndex < chipChannels[chipIndex]; pinIndex++) {
       sensorIndex = getSensorIndex(chipIndex, pinIndex);
-      adcCalibration = calibration_readings[sensorIndex];
-      adcValue = adc->readADC(pinIndex) - adcCalibration;
-      readings[sensorIndex] = adcValue;
-      #ifdef DEBUG
-        //Serial.print(adcValue);
-        //Serial.print("\t");
-      #endif
+      value = 0;
+      for (readingIndex = 0; readingIndex < READING_COUNT; readingIndex++) {
+        value = value + adc->readADC(pinIndex);
+      }
+      value = (value / READING_COUNT) - calibration_readings[sensorIndex];
+      readings[sensorIndex] = value;
+      Serial.print(value);
+      Serial.print("\t");
     }
+    //Serial.println();
   }
-  //if (DEBUG) Serial.println();
+
+  /*if (DEBUG) */Serial.println();
+  /*
   byte highestReadingIndex;
   byte secondHighestReadingIndex;
 
@@ -92,35 +104,17 @@ void monitor_loop() {
   //Serial.print(ratio);
   //Serial.print("\t");
     
-  #ifdef DEBUG
-    /*
-    Serial.print(highestReadingIndex);
-    Serial.print("\t");
-    */
-    /*
-    Serial.print(readings[secondHighestReadingIndex]);
-    Serial.print("\t");*/
-    /*
-    Serial.print(ratio);
-    Serial.print("\t");
-    
-    Serial.print(offset);
-    Serial.print("\t");
-      
-    Serial.print(pos);
-    Serial.print("\t");
-    */
-  #endif
+ 
 
   float distance = round(pos * 40) / 2.0;
   distance -= 17.0;
   if (distance < 0) distance = 0;
-  //if (DEBUG) Serial.print("Distance: ");
  
   
   display.clearDisplay();
   display.setCursor(0,0);
   display.println(distance, 1);
   display.display(); 
-  Serial.println(distance, 1);
+  //Serial.println(distance, 1);
+  */
 }
