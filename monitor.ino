@@ -4,8 +4,6 @@ void monitor_setup() {
 
 #define READING_COUNT 20
 
-int tempReadings[READING_COUNT];
-  
 void monitor_loop() {
   byte chipIndex = 0;
   byte pinIndex = 0;
@@ -13,15 +11,9 @@ void monitor_loop() {
   byte readingIndex;
   int adcValue;
   int microseconds;
-  float value;
-  //sSerial.println("monitor_loop");
-
-  // Get current readings
-  //Serial.print(micros());
-  //Serial.print("\t");
-  //if (DEBUG) Serial.println("Readings:");
-
-  
+  float value;  
+  unsigned int lowerIndex;
+  unsigned int higherIndex;
 
   for (chipIndex = 0; chipIndex < chipCount; chipIndex++) {
     chipSelect(chipIndex);
@@ -31,90 +23,102 @@ void monitor_loop() {
       for (readingIndex = 0; readingIndex < READING_COUNT; readingIndex++) {
         value = value + adc->readADC(pinIndex);
       }
-      value = (value / READING_COUNT) - calibration_readings[sensorIndex];
+      value = (value / READING_COUNT);
+      value = max(calibration_min[sensorIndex], value);
+      value = min(calibration_max[sensorIndex], value);
+      value -= calibration_min[sensorIndex];
+      value /= calibration_max[sensorIndex] - calibration_min[sensorIndex];
       readings[sensorIndex] = value;
-      Serial.print(value);
-      Serial.print("\t");
+
+      //Serial.print(value);
+      //Serial.print("\t");
     }
-    //Serial.println();
+  }
+  //Serial.println();
+
+  higherIndex = 0;
+
+  for (sensorIndex = 1; sensorIndex < 20; sensorIndex++) {
+    if (readings[sensorIndex] > readings[higherIndex]) {
+      higherIndex = sensorIndex;
+    }
   }
 
-  /*if (DEBUG) */Serial.println();
+  lowerIndex = (higherIndex == 0) ? 1 : 0;
+  for (sensorIndex = 0; sensorIndex < 20; sensorIndex++) {
+    if (sensorIndex != higherIndex && readings[sensorIndex] > readings[lowerIndex]) {
+      lowerIndex = sensorIndex;
+    }
+  }
   /*
-  byte highestReadingIndex;
-  byte secondHighestReadingIndex;
-
-  // Find highest reading
-  adcValue = 0;
-  for (sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-    if (readings[sensorIndex] > adcValue) {
-      adcValue = readings[sensorIndex];
-      highestReadingIndex = sensorIndex;
-    }
-  }
-
-  //if (DEBUG) Serial.print("Highest Reading: ");
-  //if (DEBUG) Serial.println(adcValue);
-
-  // Find second highest reading
-  adcValue = 0;
-  for (sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-    if (sensorIndex == highestReadingIndex) continue;
-    if (readings[sensorIndex] > adcValue) {
-      adcValue = readings[sensorIndex];
-      secondHighestReadingIndex = sensorIndex;
-    }
-  }
-
-  // Clamp the second highest reading
-  if (readings[secondHighestReadingIndex] < 45) 
-    readings[secondHighestReadingIndex] = 45;
-  else if (readings[secondHighestReadingIndex] > 165)
-    readings[secondHighestReadingIndex] = 165;
-
-  readings[secondHighestReadingIndex] += corrections[readings[secondHighestReadingIndex] - 45];
-
-  // Calculate % position of second highest value between 40 and 165
-  float ratio;
-  float offset;
-
-  //Serial.print(highestReadingIndex);
-  //Serial.print("\t");
-  //Serial.print(secondHighestReadingIndex);
-  //Serial.print("\t");
-        
-  float pos;
-  float straight;
-  float x;
-
-  float m;
-  if (highestReadingIndex > secondHighestReadingIndex) {
-    m = -12;
-  } else {
-    m = +12;
-  }
-  ratio = 1.0 - abs(((readings[secondHighestReadingIndex] - 165) / m) / 10.0);
-  offset = ratio * 0.5;
+  Serial.print("IndexH: ");
+  Serial.print(higherIndex);
+  Serial.print("\t");
+  Serial.print("IndexL: ");
+  Serial.print(lowerIndex);
+  Serial.print("\t");
   
-  if (highestReadingIndex > secondHighestReadingIndex) {
-    offset = -offset;
-  }
-  
-  pos = highestReadingIndex + offset;
-  //Serial.print(ratio);
-  //Serial.print("\t");
-    
- 
-
-  float distance = round(pos * 40) / 2.0;
-  distance -= 17.0;
-  if (distance < 0) distance = 0;
- 
-  
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.println(distance, 1);
-  display.display(); 
-  //Serial.println(distance, 1);
+  Serial.print("ReadingH: ");
+  Serial.print(readings[higherIndex], 5);
+  Serial.print("\t");
+  Serial.print("ReadingL: ");
+  Serial.print(readings[lowerIndex], 5);
+  Serial.print("\t");
+*/
+  value = readings[higherIndex] / readings[lowerIndex];
+  /*
+  Serial.print("H/L: ");
+  Serial.print(value, 5);
+  Serial.print("\t");
+*/
+  value -= 1;
+  /*
+  Serial.print("H/L - 1: ");
+  Serial.print(value, 5);
+  Serial.print("\t");
+*/
+  value *= multipliers[higherIndex - 1];
+  /*
+  Serial.print("Multiplied: ");
+  Serial.print(value, 5);
+  Serial.print("\t");
   */
+  value = 1.0 - value;
+  /*
+  Serial.print("Inverted: ");
+  Serial.print(value, 5);
+  Serial.print("\t");*/
+
+  unsigned int leftIndex = (higherIndex < lowerIndex) ? higherIndex : lowerIndex;
+  //Serial.print(higherIndex);
+  //Serial.print("\t");
+  //Serial.print("Mul: ");
+  //Serial.print(multipliers[higherIndex - 1], 5);
+  //Serial.print("\t");
+  
+  
+  value = max(0.0, value);
+  value = min(1.0, value);
+  /*Serial.print("Clamped: ");
+  Serial.print(value, 5);
+  Serial.print("\t");*/
+
+  value *= 0.5;
+ /* Serial.print("Ratio: ");
+  Serial.print(value, 5);
+  Serial.print("\t");*/ 
+
+  if (lowerIndex > higherIndex) {
+    //Serial.print("+\t");
+    value = (float)higherIndex + value;
+  } else {
+    //Serial.print("-\t");
+    value = (float)higherIndex - value;
+  }
+
+  Serial.print(value * 20, 5);
+ //Serial.print("\t");
+
+  
+  Serial.println();
 }
